@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,6 +14,9 @@ import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements RecognitionListener {
 
@@ -20,6 +24,10 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
     Intent mRecognizerIntent;
     TextView tvMainResult, tvInform, tvOtherResults;
     ToggleButton toggleButton;
+
+    TextToSpeech mTts;
+
+    Parser mParser;
 
     private String LOG_TAG = "SpeechRecognition";
 
@@ -50,6 +58,17 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
                 }
             }
         });
+
+        mTts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if(status != TextToSpeech.ERROR) {
+                    mTts.setLanguage(Locale.US);
+                }
+            }
+        });
+
+
     }
     @Override
     protected void onResume() {
@@ -66,6 +85,13 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
             mSpeechRecognizer.destroy();
             Log.i(LOG_TAG, "destroy");
         }
+
+        if(mTts != null ){
+            mTts.stop();
+            mTts.shutdown();
+        }
+
+
     }
 
 
@@ -117,6 +143,13 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
 
         tvMainResult.setText(text);
         tvOtherResults.setText(otherText);
+
+        mParser = new Parser(text);
+        if(mParser.find("meet")) {
+            setMeeting();
+        }
+
+        mTts.speak(text, TextToSpeech.QUEUE_FLUSH, null);
     }
 
     @Override
@@ -165,4 +198,20 @@ public class MainActivity extends AppCompatActivity implements RecognitionListen
         }
         return text;
     }
+
+    public void setMeeting(){
+        tvInform.setText(" meet is found");
+
+        // TODO Göstermelik
+        Calendar cal = Calendar.getInstance();
+        Intent intent = new Intent(Intent.ACTION_EDIT);
+        intent.setType("vnd.android.cursor.item/event");
+        intent.putExtra("beginTime", cal.getTimeInMillis());
+        intent.putExtra("allDay", true);
+        intent.putExtra("rrule", "FREQ=YEARLY");
+        intent.putExtra("endTime", cal.getTimeInMillis()+60*60*1000);
+        intent.putExtra("title", "It is a meeting set by STTDeneme");
+        startActivity(intent);
+    }
+
 }
